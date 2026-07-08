@@ -129,7 +129,21 @@ export default function Dashboard() {
 
   async function handleLogin() {
     try {
-      await loginWithGoogle();
+      const loggedUser = await loginWithGoogle();
+      const idToken = await loggedUser.getIdToken();
+
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || 'Falha ao criar sessão segura no servidor.');
+      }
+
+      setStatus('Login Firebase concluído com sessão segura no servidor.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Falha no login com Google.');
     }
@@ -137,6 +151,7 @@ export default function Dashboard() {
 
   async function handleLogout() {
     await logoutUser();
+    await fetch('/api/auth/session', { method: 'DELETE' }).catch(() => undefined);
     setUser(null);
     setStatus('Sessão encerrada. A coleção local continua disponível neste dispositivo.');
   }
